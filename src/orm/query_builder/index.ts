@@ -653,6 +653,15 @@ export class ModelQueryBuilder
   }
 
   /**
+   * Define a relationship to preload, but only if they are not
+   * already preloaded
+   */
+  preloadOnce(relationName: any): this {
+    this.preloader.preloadOnce(relationName)
+    return this
+  }
+
+  /**
    * Perform update by incrementing value for a given column. Increments
    * can be clubbed with `update` as well
    */

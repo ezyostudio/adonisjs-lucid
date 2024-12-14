@@ -129,6 +129,18 @@ export class Preloader implements PreloaderContract<LucidRow> {
   }
 
   /**
+   * Define a relationship to preload, but only if they are not
+   * already preloaded
+   */
+  preloadOnce(name: any): this {
+    if (!this.preloads[name]) {
+      return this.load(name)
+    }
+
+    return this
+  }
+
+  /**
    * Toggle query debugging
    */
   debug(debug: boolean) {

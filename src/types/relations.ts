@@ -1065,6 +1065,9 @@ export interface PreloadWithoutCallback<Model extends LucidRow, Builder> {
   <Name extends ExtractModelRelations<Model>>(relation: Name): Builder
 }
 
+export interface PreloadOnce<Model extends LucidRow, Builder>
+  extends PreloadWithoutCallback<Model, Builder> {}
+
 /**
  * Shape of the preloader to preload relationships
  */
@@ -1074,6 +1077,7 @@ export interface PreloaderContract<Model extends LucidRow> {
 
   load: Preload<Model, this>
   preload: Preload<Model, this>
+  preloadOnce: PreloadOnce<Model, this>
 
   debug(debug: boolean): this
   sideload(values: ModelObject): this

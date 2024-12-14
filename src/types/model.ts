@@ -42,6 +42,7 @@ import {
   WithAggregate,
   WithCount,
   PreloadWithoutCallback,
+  PreloadOnce,
 } from './relations.js'
 
 /**
@@ -481,6 +482,7 @@ export interface ModelQueryBuilderContract<Model extends LucidModel, Result = In
    * Define relationships to be preloaded
    */
   preload: Preload<InstanceType<Model>, this>
+  preloadOnce: PreloadOnce<InstanceType<Model>, this>
 
   /**
    * Aggregates

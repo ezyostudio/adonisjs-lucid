@@ -864,6 +864,42 @@ test.group('Model | BelongsTo | preload', (group) => {
     assert.equal(profiles[0].user.id, profiles[0].userId)
   })
 
+  test('preload relationship once', async ({ assert, fs }) => {
+    const app = new AppFactory().create(fs.baseUrl, () => {})
+    await app.init()
+    const db = getDb()
+    const adapter = ormAdapter(db)
+    const BaseModel = getBaseModel(adapter)
+    class User extends BaseModel {
+      @column({ isPrimary: true })
+      declare id: number
+    }
+
+    class Profile extends BaseModel {
+      @column()
+      declare userId: number
+
+      @belongsTo(() => User)
+      declare user: BelongsTo<typeof User>
+    }
+
+    await db.insertQuery().table('users').insert({ username: 'virk' })
+    await db.insertQuery().table('profiles').insert({ display_name: 'Hvirk', user_id: 1 })
+
+    Profile.boot()
+
+    let callbackCalled = false
+
+    const profiles = await Profile.query()
+      .preload('user', () => {
+        callbackCalled = true
+      })
+      .preloadOnce('user')
+    assert.lengthOf(profiles, 1)
+    assert.equal(profiles[0].user.id, profiles[0].userId)
+    assert.isTrue(callbackCalled)
+  })
+
   test('set property value to null when no preload rows were found', async ({ assert, fs }) => {
     const app = new AppFactory().create(fs.baseUrl, () => {})
     await app.init()
