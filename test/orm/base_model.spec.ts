@@ -813,6 +813,35 @@ test.group('Base Model | dirty', (group) => {
     user.location.isDirty = true
     assert.deepEqual(user.$dirty, { location: { state: 'goa', country: 'India', isDirty: true } })
   })
+
+  test('isDirty returns whether field is dirty', async ({ fs, assert }) => {
+    const app = new AppFactory().create(fs.baseUrl, () => {})
+    await app.init()
+    const db = getDb()
+    const adapter = ormAdapter(db)
+
+    const BaseModel = getBaseModel(adapter)
+
+    class User extends BaseModel {
+      @column()
+      declare username: string
+
+      @column()
+      declare email: string
+    }
+
+    const user = new User()
+
+    assert.isFalse(user.isDirty())
+    assert.isFalse(user.isDirty('username'))
+
+    user.username = 'virk'
+
+    assert.isTrue(user.isDirty())
+    assert.isTrue(user.isDirty('username'))
+    assert.isFalse(user.isDirty('email'))
+    assert.isTrue(user.isDirty(['username', 'email']))
+  })
 })
 
 test.group('Base Model | persist', (group) => {
@@ -1401,6 +1430,49 @@ test.group('Base Model | persist', (group) => {
     const users = await User.all()
     assert.lengthOf(users, 1)
     assert.equal(users[0].id.toLowerCase(), newUuid)
+  })
+
+  test('use custom name for the local primary key', async ({ fs, assert }) => {
+    const app = new AppFactory().create(fs.baseUrl, () => {})
+    await app.init()
+    const db = await getDb()
+    const adapter = ormAdapter(db)
+
+    const BaseModel = getBaseModel(adapter)
+
+    class User extends BaseModel {
+      static table = 'uuid_users'
+      static selfAssignPrimaryKey = true
+
+      @column({ isPrimary: true, columnName: 'id' })
+      declare userId: string
+
+      @column()
+      declare username: string
+
+      @column()
+      declare createdAt: string
+
+      @column({ columnName: 'updated_at' })
+      declare updatedAt: string
+    }
+
+    User.boot()
+
+    const uuid = '2da96a33-57a0-4752-9d56-0e2485d4d2a4'
+
+    const user = new User()
+    user.userId = uuid
+    user.username = 'virk'
+    await user.save()
+
+    const newUuid = '4da96a33-57a0-4752-9d56-0e2485d4d2a1'
+    user.userId = newUuid
+
+    await user.save()
+    const users = await User.all()
+    assert.lengthOf(users, 1)
+    assert.equal(users[0].userId.toLowerCase(), newUuid)
   })
 })
 
@@ -8232,5 +8304,72 @@ test.group('Base Model | lockForUpdate', (group) => {
         await freshUser.save()
       })
     )
+  })
+})
+
+test.group('Base Model | transaction', (group) => {
+  group.setup(async () => {
+    await setup()
+  })
+
+  group.teardown(async () => {
+    await cleanupTables()
+  })
+
+  group.each.teardown(async () => {
+    await resetTables()
+  })
+
+  test('create transaction client using model', async ({ fs, assert }) => {
+    const app = new AppFactory().create(fs.baseUrl, () => {})
+    await app.init()
+    const db = getDb()
+    const adapter = ormAdapter(db)
+
+    const BaseModel = getBaseModel(adapter)
+
+    class User extends BaseModel {
+      @column({ isPrimary: true })
+      declare id: number
+
+      @column()
+      declare username: string
+
+      @column()
+      declare email: string
+    }
+
+    const client = await User.transaction()
+    await client.insertQuery().table('users').insert({ username: 'virk' })
+    await client.rollback()
+    const user = await User.find(1)
+
+    assert.isNull(user)
+  })
+
+  test('auto manage transaction when callback is provided', async ({ fs, assert }) => {
+    const app = new AppFactory().create(fs.baseUrl, () => {})
+    await app.init()
+    const db = getDb()
+    const adapter = ormAdapter(db)
+
+    const BaseModel = getBaseModel(adapter)
+
+    class User extends BaseModel {
+      @column({ isPrimary: true })
+      declare id: number
+
+      @column()
+      declare username: string
+
+      @column()
+      declare email: string
+    }
+
+    await User.transaction(async (trx) => {
+      return trx.insertQuery().table('users').insert({ username: 'virk' }).returning('id')
+    })
+    const user = await User.find(1)
+    assert.equal(user!.username, 'virk')
   })
 })

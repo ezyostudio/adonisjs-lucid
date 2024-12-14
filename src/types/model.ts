@@ -9,7 +9,12 @@
 
 import { DateTime } from 'luxon'
 import type Hooks from '@poppinss/hooks'
-import { DialectContract, QueryClientContract, TransactionClientContract } from './database.js'
+import {
+  TransactionFn,
+  DialectContract,
+  QueryClientContract,
+  TransactionClientContract,
+} from './database.js'
 
 import {
   Update,
@@ -613,6 +618,8 @@ export interface LucidRow {
   fill(value: Partial<ModelAttributes<this>>, allowExtraProperties?: boolean): this
   merge(value: Partial<ModelAttributes<this>>, allowExtraProperties?: boolean): this
 
+  isDirty(fields?: keyof ModelAttributes<this> | (keyof ModelAttributes<this>)[]): boolean
+
   /**
    * Enable force update even when no attributes
    * are dirty
@@ -1142,6 +1149,12 @@ export interface LucidModel {
     this: Model,
     options?: ModelAdapterOptions
   ): ModelQueryBuilderContract<Model, Result>
+
+  /**
+   * Returns transaction client from the model. It is same as
+   * calling "db.transaction"
+   */
+  transaction: TransactionFn
 
   /**
    * Truncate model table

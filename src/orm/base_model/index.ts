@@ -11,7 +11,11 @@ import { DateTime } from 'luxon'
 import Hooks from '@poppinss/hooks'
 import lodash from '@poppinss/utils/lodash'
 import { Exception, defineStaticProperty } from '@poppinss/utils'
-import { QueryClientContract, TransactionClientContract } from '../../types/database.js'
+import {
+  IsolationLevels,
+  QueryClientContract,
+  TransactionClientContract,
+} from '../../types/database.js'
 
 import {
   LucidRow,
@@ -239,6 +243,33 @@ class BaseModelImpl implements LucidRow {
    */
   static query(options?: ModelAdapterOptions): any {
     return this.$adapter.query(this, options)
+  }
+
+  /**
+   * Returns the model query instance for the given model
+   */
+  static transaction<T>(
+    callback: (trx: TransactionClientContract) => Promise<T>,
+    options?: ModelAdapterOptions & { isolationLevel?: IsolationLevels }
+  ): Promise<T>
+  static transaction(
+    options?: ModelAdapterOptions & {
+      isolationLevel?: IsolationLevels
+    }
+  ): Promise<TransactionClientContract>
+  static async transaction<T>(
+    callbackOrOptions?:
+      | ((trx: TransactionClientContract) => Promise<T>)
+      | (ModelAdapterOptions & { isolationLevel?: IsolationLevels }),
+    options?: ModelAdapterOptions & { isolationLevel?: IsolationLevels }
+  ): Promise<TransactionClientContract | T> {
+    if (typeof callbackOrOptions === 'function') {
+      const client = this.$adapter.modelConstructorClient(this, options)
+      return client.transaction(callbackOrOptions, options)
+    }
+
+    const client = this.$adapter.modelConstructorClient(this, callbackOrOptions)
+    return client.transaction(callbackOrOptions)
   }
 
   /**
@@ -1767,6 +1798,19 @@ class BaseModelImpl implements LucidRow {
   }
 
   /**
+   * Returns whether any of the fields have been modified
+   */
+  isDirty(fields?: any): boolean {
+    const keys = Array.isArray(fields) ? fields : fields ? [fields] : []
+
+    if (keys.length === 0) {
+      return this.$isDirty
+    }
+
+    return keys.some((key) => key in this.$dirty)
+  }
+
+  /**
    * Enable force update even when no attributes
    * are dirty
    */
@@ -2106,10 +2150,8 @@ class BaseModelImpl implements LucidRow {
     client: QueryClientContract
   ): any {
     const modelConstructor = this.constructor as typeof BaseModel
-    const primaryKeyColumn = modelConstructor.$keys.attributesToColumns.get(
-      modelConstructor.primaryKey,
-      modelConstructor.primaryKey
-    )
+    const primaryKey = modelConstructor.primaryKey
+    const primaryKeyColumn = modelConstructor.$keys.attributesToColumns.get(primaryKey, primaryKey)
 
     /**
      * Returning insert query for the inserts
@@ -2126,7 +2168,7 @@ class BaseModelImpl implements LucidRow {
      * updating primary key itself
      */
     const primaryKeyValue = modelConstructor.selfAssignPrimaryKey
-      ? this.$original[primaryKeyColumn]
+      ? this.$original[primaryKey]
       : this.$primaryKeyValue
 
     /**
