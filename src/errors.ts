@@ -7,7 +7,8 @@
  * file that was distributed with this source code.
  */
 
-import { createError } from '@poppinss/utils'
+import { createError, Exception } from '@poppinss/utils'
+import { LucidModel } from './types/model.js'
 
 export const E_INVALID_DATE_COLUMN_VALUE = createError<[string, string | null]>(
   'Invalid value for "%s". %s',
@@ -45,7 +46,29 @@ export const E_MODEL_DELETED = createError(
   500
 )
 
-export const E_ROW_NOT_FOUND = createError('Row not found', 'E_ROW_NOT_FOUND', 404)
+/**
+ * The "E_ROW_NOT_FOUND" exception is raised when
+ * no row is found in a database single query
+ *
+ * The "error.model" can be used to know the model which
+ * raised the error. This will only be present when using
+ * Lucid models not Database queries
+ */
+export const E_ROW_NOT_FOUND = class extends Exception {
+  static readonly status: number = 404
+  static readonly code: string = 'E_ROW_NOT_FOUND'
+  static readonly message: string = 'Row not found'
+
+  /**
+   * The model that raised the error.
+   */
+  model?: LucidModel
+
+  constructor(model?: LucidModel) {
+    super()
+    this.model = model
+  }
+}
 
 export const E_UNABLE_ACQUIRE_LOCK = createError(
   'Unable to acquire lock. Concurrent migrations are not allowed',

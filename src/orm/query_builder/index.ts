@@ -481,7 +481,7 @@ export class ModelQueryBuilder
   async firstOrFail(): Promise<any> {
     const row = await this.first()
     if (!row) {
-      throw new errors.E_ROW_NOT_FOUND()
+      throw new errors.E_ROW_NOT_FOUND(this.model)
     }
 
     return row

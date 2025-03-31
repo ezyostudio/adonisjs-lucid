@@ -14,7 +14,7 @@ import { Adapter } from '../src/orm/adapter/index.js'
 import { QueryClient } from '../src/query_client/index.js'
 import { BaseModel } from '../src/orm/base_model/index.js'
 import { DatabaseTestUtils } from '../src/test_utils/database.js'
-import type { DatabaseConfig, DbQueryEventNode } from '../src/types/database.js'
+import type { ConnectionContract, DatabaseConfig, DbQueryEventNode } from '../src/types/database.js'
 import { VineDbSearchCallback, VineDbSearchOptions } from '../src/types/vine.js'
 
 /**
@@ -26,6 +26,9 @@ declare module '@adonisjs/core/types' {
   }
   export interface EventsList {
     'db:query': DbQueryEventNode
+    'db:connection:connect': ConnectionContract
+    'db:connection:disconnect': ConnectionContract
+    'db:connection:error': [Error, ConnectionContract]
   }
 }
 
@@ -65,8 +68,8 @@ declare module '@vinejs/vine' {
      * Ensure the value exists inside the database by self
      * executing a query.
      *
-     * - The callback must return "false", if the value exists.
-     * - The callback must return "true", if the value does not exist.
+     * - The callback must return "true", if the value exists.
+     * - The callback must return "false", if the value does not exist.
      */
     exists(callback: VineDbSearchCallback<ValueType>): this
   }
